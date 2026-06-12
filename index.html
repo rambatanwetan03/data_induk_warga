@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buku Induk Penduduk Desa</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase JS Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SheetJS for Excel Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            desa: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen overflow-hidden">
+
+  <!-- LOGIN LAYOUT -->
+  <div id="loginLayout" class="fixed inset-0 bg-gradient-to-br from-desa-900 via-desa-800 to-slate-900 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100 space-y-6">
+      <div class="text-center">
+        <div class="inline-flex p-4 bg-desa-50 text-desa-600 rounded-full text-3xl mb-3">
+          <i class="fa-solid fa-building-user text-desa-600"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800">Sistem Buku Induk</h2>
+        <p class="text-xs text-slate-500 mt-1">Desa Rambatan Wetan - Silakan Masuk</p>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Username</label>
+          <div class="relative">
+            <!-- Menambahkan pemicu Enter pada input Username -->
+            <input id="loginUsername" type="text" onkeydown="if(event.key === 'Enter') handleLoginSubmit()" placeholder="Masukkan Username" class="w-full border border-slate-300 rounded-lg py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+            <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Password</label>
+          <div class="relative">
+            <!-- Menambahkan pemicu Enter pada input Password -->
+            <input id="loginPassword" type="password" onkeydown="if(event.key === 'Enter') handleLoginSubmit()" placeholder="Masukkan Password" class="w-full border border-slate-300 rounded-lg py-2.5 pl-10 pr-10 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+            <button onclick="toggleLoginPassword()" type="button" class="absolute right-3 top-2.5 p-1 text-slate-400 hover:text-slate-600 focus:outline-none" title="Buka/Tutup Password">
+              <i id="eyeIcon" class="fa-solid fa-eye text-sm"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div id="loginError" class="hidden text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span id="loginErrorMsg">Username atau Password salah!</span>
+        </div>
+        
+        <button onclick="handleLoginSubmit()" class="w-full bg-desa-600 hover:bg-desa-700 text-white font-semibold py-3 rounded-lg text-sm transition-colors shadow-md shadow-desa-900/10 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem
+        </button>
+      </div>
+      
+      <div class="text-center text-[11px] text-slate-400">
+        Sistem Informasi Administrasi Desa &copy; 2026
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP LAYOUT (Hidden by default until logged in) -->
+  <div id="appLayout" class="hidden flex flex-col md:flex-row h-screen w-screen overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-full md:w-72 bg-desa-900 text-white flex flex-col shadow-xl z-20 flex-shrink-0">
+      <div class="p-5 border-b border-desa-800">
+        <h1 class="text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-book-open text-desa-400"></i>
+          <span>BUKU INDUK</span>
+        </h1>
+        <p class="text-xs opacity-70 mt-1">
+          Penduduk Desa Rambatan Wetan
+        </p>
+      </div>
+
+      <!-- Connection Status Banner (Hanya menampilkan status koneksi tanpa menu ubah) -->
+      <div id="statusBanner" class="px-5 py-2 text-xs flex items-center bg-yellow-600/30 text-yellow-200 border-b border-desa-800">
+        <span class="flex items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full bg-yellow-400 animate-pulse"></span>
+          Memeriksa Koneksi...
+        </span>
+      </div>
+
+      <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+        <button onclick="showPage('dashboard')" id="btn-dashboard" class="menu-btn w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors bg-desa-800 text-white font-medium">
+          <i class="fa-solid fa-chart-line text-desa-400"></i> Dashboard
+        </button>
+
+        <button onclick="showPage('penduduk')" id="btn-penduduk" class="menu-btn w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white">
+          <i class="fa-solid fa-users text-desa-400"></i> Data Penduduk
+        </button>
+
+        <button onclick="showPage('mutasi')" id="btn-mutasi" class="menu-btn w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white">
+          <i class="fa-solid fa-right-left text-desa-400"></i> Mutasi Penduduk
+        </button>
+
+        <button onclick="showPage('kk')" id="btn-kk" class="menu-btn w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white">
+          <i class="fa-solid fa-house-user text-desa-400"></i> Kartu Keluarga
+        </button>
+
+        <button onclick="showPage('laporan')" id="btn-laporan" class="menu-btn w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white">
+          <i class="fa-solid fa-file-invoice text-desa-400"></i> Laporan & Sinkronisasi
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-desa-800 bg-desa-950 flex flex-col gap-3">
+        <div class="flex items-center">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-desa-700 flex items-center justify-center font-bold text-sm" id="operatorInitial">
+              OP
+            </div>
+            <div>
+              <div class="text-xs font-semibold" id="operatorName">Operator Desa</div>
+              <div class="text-[10px] opacity-60" id="operatorSub">Sistem Informasi Adm.</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- LOGOUT BUTTON -->
+        <button onclick="handleLogout()" class="w-full border border-desa-800 hover:border-red-500 hover:text-red-300 text-slate-400 rounded-lg py-2 px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
+          <i class="fa-solid fa-power-off"></i> Keluar Sistem
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <div class="flex-1 flex flex-col min-h-0 overflow-y-auto">
+      
+      <!-- HEADER -->
+      <header class="bg-white border-b border-slate-200 p-4 md:px-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
+        <div>
+          <h2 class="text-xl md:text-2xl font-bold text-slate-800">Buku Induk Kependudukan</h2>
+          <p class="text-xs md:text-sm text-slate-500">Sistem Administrasi dan Analitik Penduduk Desa Mandiri</p>
+        </div>
+        <div class="flex gap-2 w-full sm:w-auto">
+          <button onclick="openModal()" class="flex-1 sm:flex-initial bg-desa-600 hover:bg-desa-700 text-white font-medium px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm transition-shadow shadow-sm">
+            <i class="fa-solid fa-plus"></i> Tambah Penduduk
+          </button>
+        </div>
+      </header>
+
+      <!-- MAIN BODY PAGES -->
+      <main class="flex-1">
+
+        <!-- DASHBOARD PAGE -->
+        <section id="dashboard" class="page p-4 md:p-8 space-y-6">
+          <!-- STATS CARDS -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div class="p-3 bg-desa-50 text-desa-600 rounded-lg text-2xl"><i class="fa-solid fa-users"></i></div>
+              <div>
+                <div class="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Penduduk</div>
+                <div id="totalPenduduk" class="text-2xl md:text-3xl font-bold text-slate-800">0</div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div class="p-3 bg-blue-50 text-blue-600 rounded-lg text-2xl"><i class="fa-solid fa-mars"></i></div>
+              <div>
+                <div class="text-xs text-slate-500 font-medium uppercase tracking-wider">Laki-Laki</div>
+                <div id="totalLaki" class="text-2xl md:text-3xl font-bold text-slate-800">0</div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div class="p-3 bg-pink-50 text-pink-600 rounded-lg text-2xl"><i class="fa-solid fa-venus"></i></div>
+              <div>
+                <div class="text-xs text-slate-500 font-medium uppercase tracking-wider">Perempuan</div>
+                <div id="totalPerempuan" class="text-2xl md:text-3xl font-bold text-slate-800">0</div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div class="p-3 bg-orange-50 text-orange-600 rounded-lg text-2xl"><i class="fa-solid fa-id-card"></i></div>
+              <div>
+                <div class="text-xs text-slate-500 font-medium uppercase tracking-wider">Total KK</div>
+                <div id="totalKK" class="text-2xl md:text-3xl font-bold text-slate-800">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CHARTS SECTION -->
+          <div class="grid lg:grid-cols-3 gap-6">
+            <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm lg:col-span-1">
+              <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-venus-mars text-desa-500"></i> Distribusi Jenis Kelamin</h3>
+              <div class="relative h-64 flex justify-center">
+                <canvas id="chartJK"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm lg:col-span-1">
+              <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-mosque text-desa-500"></i> Distribusi Agama</h3>
+              <div class="relative h-64">
+                <canvas id="chartAgama"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm lg:col-span-1">
+              <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-desa-500"></i> Distribusi Dusun</h3>
+              <div class="relative h-64">
+                <canvas id="chartDusun"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DATA PENDUDUK PAGE -->
+        <section id="penduduk" class="page hidden p-4 md:p-8 space-y-6">
+          <div class="bg-white rounded-xl border border-slate-100 shadow-sm">
+            <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h3 class="font-bold text-lg text-slate-800">Daftar Induk Penduduk</h3>
+                <p class="text-xs text-slate-500 mt-1">Kelola data primer seluruh warga desa</p>
+              </div>
+              <div class="w-full md:w-80 relative">
+                <input type="text" id="searchInput" placeholder="Cari Nama, NIK, atau Dusun..." class="w-full border border-slate-300 rounded-lg py-2 pl-9 pr-4 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
+                    <th class="p-4">NIK</th>
+                    <th class="p-4">Nomor KK</th>
+                    <th class="p-4">Nama Lengkap</th>
+                    <th class="p-4">JK</th>
+                    <th class="p-4">TTL</th>
+                    <th class="p-4">Agama</th>
+                    <th class="p-4">Pendidikan</th>
+                    <th class="p-4">Pekerjaan</th>
+                    <th class="p-4">RT/RW</th>
+                    <th class="p-4">Dusun</th>
+                    <th class="p-4">Status Hubungan</th>
+                    <th class="p-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tablePenduduk" class="divide-y divide-slate-100 text-slate-600">
+                  <tr>
+                    <td colspan="12" class="p-8 text-center text-slate-400">Sedang memuat data...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- KARTU KELUARGA PAGE -->
+        <section id="kk" class="page hidden p-4 md:p-8 space-y-6">
+          <div class="bg-white rounded-xl border border-slate-100 shadow-sm">
+            <div class="p-5 border-b border-slate-100">
+              <h3 class="font-bold text-lg text-slate-800">Data Rekap Kartu Keluarga</h3>
+              <p class="text-xs text-slate-500 mt-1">Daftar KK aktif yang tercatat beserta kepala keluarganya</p>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
+                    <th class="p-4">No. Kartu Keluarga</th>
+                    <th class="p-4">Kepala Keluarga</th>
+                    <th class="p-4">Jumlah Anggota</th>
+                    <th class="p-4">Dusun</th>
+                  </tr>
+                </thead>
+                <tbody id="tableKK" class="divide-y divide-slate-100 text-slate-600">
+                  <tr>
+                    <td colspan="4" class="p-8 text-center text-slate-400">Tidak ada data Kartu Keluarga.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- MUTASI PENDUDUK PAGE -->
+        <section id="mutasi" class="page hidden p-4 md:p-8 space-y-6">
+          <div class="bg-white rounded-xl border border-slate-100 shadow-sm">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+              <div>
+                <h3 class="font-bold text-lg text-slate-800">Catatan Mutasi Penduduk</h3>
+                <p class="text-xs text-slate-500 mt-1">Data perpindahan penduduk (Lahir, Meninggal, Pindah, Datang)</p>
+              </div>
+              <button onclick="openDirectMutasiModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs px-3 py-2 rounded-lg flex items-center gap-1">
+                <i class="fa-solid fa-plus"></i> Catat Mutasi Manual
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
+                    <th class="p-4">Nama Penduduk</th>
+                    <th class="p-4">Jenis Mutasi</th>
+                    <th class="p-4">Tanggal Catat</th>
+                    <th class="p-4">Keterangan</th>
+                    <th class="p-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tableMutasi" class="divide-y divide-slate-100 text-slate-600">
+                  <tr>
+                    <td colspan="5" class="p-8 text-center text-slate-400">Tidak ada riwayat mutasi.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- REPORT AND SYNCHRONIZATION PAGE -->
+        <section id="laporan" class="page hidden p-4 md:p-8 space-y-6">
+          <div class="grid md:grid-cols-2 gap-6">
+            
+            <!-- EXPORT/IMPORT PANEL -->
+            <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-4">
+              <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-file-excel text-green-600"></i> Ekspor & Impor Data
+              </h3>
+              <p class="text-xs text-slate-500">Gunakan fitur ini untuk membuat backup data lokal dalam bentuk file Excel atau JSON, serta melakukan restore data.</p>
+              
+              <div class="flex flex-wrap gap-2 pt-2">
+                <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
+                  <i class="fa-solid fa-file-excel"></i> Ekspor ke Excel (.xlsx)
+                </button>
+                <button onclick="backupJSON()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
+                  <i class="fa-solid fa-download"></i> Ekspor Backup (.json)
+                </button>
+              </div>
+              
+              <hr class="border-slate-100 my-4">
+              
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-slate-700">Impor / Pulihkan dari File JSON</label>
+                <div class="flex items-center gap-2">
+                  <input type="file" id="restoreFile" accept=".json" class="hidden" onchange="restoreJSON(event)">
+                  <label for="restoreFile" class="bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-upload"></i> Pilih File JSON
+                  </label>
+                  <span id="restoreFileName" class="text-xs text-slate-400">Belum ada file dipilih</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- DATABASE CONFIGURE & SYNC -->
+            <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-4">
+              <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-database text-blue-600"></i> Integrasi Database Supabase
+              </h3>
+              <p class="text-xs text-slate-500">Dengan menghubungkan sistem ke Supabase, data Anda disimpan secara aman di cloud, memungkinkan sinkronisasi real-time yang permanen.</p>
+              
+              <div class="bg-slate-50 p-4 rounded-lg border border-slate-100 text-xs space-y-2 text-slate-600">
+                <span class="font-bold text-slate-800 block">Status Koneksi:</span>
+                <div id="syncStatus" class="flex items-center gap-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span> Terputus (Mode Lokal Aktif)
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <!-- Tombol menu setup manual disembunyikan agar koneksi tetap permanen -->
+                <button onclick="syncLocalToSupabase()" id="btnSyncToCloud" class="hidden bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Upload Data Lokal ke Cloud
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- POPUP NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-green-400 text-lg"></i>
+    <span id="toastMsg" class="text-sm font-medium">Notifikasi berhasil muncul!</span>
+  </div>
+
+  <!-- MODAL FORM ENTRI PENDUDUK -->
+  <div id="modalPenduduk" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-40 p-4">
+    <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden scale-95 transition-transform duration-300" id="modalContainer">
+      
+      <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-id-card text-desa-600"></i>
+          <span id="modalTitle">Tambah Data Penduduk Baru</span>
+        </h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+
+      <div class="flex-1 p-6 overflow-y-auto space-y-4">
+        <input type="hidden" id="editId">
+        
+        <div class="grid md:grid-cols-3 gap-4">
+          <!-- NIK -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Nomor Induk Kependudukan (NIK) *</label>
+            <input id="nik" type="text" maxlength="16" placeholder="16 Digit NIK" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+          <!-- KK (ID Diubah menjadi kkInput demi menghindari tabrakan ID) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Nomor Kartu Keluarga (KK) *</label>
+            <input id="kkInput" type="text" maxlength="16" placeholder="16 Digit Nomor KK" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+          <!-- Nama -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Nama Lengkap *</label>
+            <input id="nama" type="text" placeholder="Sesuai KTP" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-4">
+          <!-- JK -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Jenis Kelamin</label>
+            <select id="jk" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+              <option value="L">Laki-Laki</option>
+              <option value="P">Perempuan</option>
+            </select>
+          </div>
+          <!-- Tempat Lahir -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Tempat Lahir</label>
+            <input id="tempat" type="text" placeholder="Kota/Kabupaten" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+          <!-- Tanggal Lahir -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Tanggal Lahir</label>
+            <input id="tanggal" type="date" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-4">
+          <!-- Agama -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Agama</label>
+            <select id="agama" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+              <option value="Islam">Islam</option>
+              <option value="Kristen">Kristen</option>
+              <option value="Katolik">Katolik</option>
+              <option value="Hindu">Hindu</option>
+              <option value="Buddha">Buddha</option>
+              <option value="Konghucu">Konghucu</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+          <!-- Pendidikan -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Pendidikan Terakhir</label>
+            <input id="pendidikan" type="text" placeholder="SD / SMP / SMA / S1 / dll" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+          <!-- Pekerjaan -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Pekerjaan</label>
+            <input id="pekerjaan" type="text" placeholder="Tani / Karyawan / IRT / dll" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-4">
+          <!-- Status Kawin -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Status Perkawinan</label>
+            <select id="statusKawin" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+              <option value="Belum Kawin">Belum Kawin</option>
+              <option value="Kawin">Kawin</option>
+              <option value="Cerai Hidup">Cerai Hidup</option>
+              <option value="Cerai Mati">Cerai Mati</option>
+            </select>
+          </div>
+          <!-- Status Keluarga -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Hubungan Keluarga</label>
+            <select id="statusKeluarga" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+              <option value="Kepala Keluarga">Kepala Keluarga</option>
+              <option value="Istri">Istri</option>
+              <option value="Anak">Anak</option>
+              <option value="Orangtua">Orang Tua</option>
+              <option value="Mertua">Mertua</option>
+              <option value="Cucu">Cucu</option>
+              <option value="Famili Lain">Famili Lain</option>
+            </select>
+          </div>
+          <!-- Telepon -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Nomor Telepon/HP</label>
+            <input id="nohp" type="tel" placeholder="08xxxxxxxxx" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-4 gap-4">
+          <!-- RT -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">RT</label>
+            <input id="rt" type="number" placeholder="001" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+          <!-- RW -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">RW</label>
+            <input id="rw" type="number" placeholder="001" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+          <!-- Dusun -->
+          <div class="md:col-span-2">
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Dusun / Wilayah</label>
+            <input id="dusun" type="text" placeholder="Nama Dusun" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Alamat Lengkap Jalan / No. Rumah</label>
+          <textarea id="alamat" rows="2" placeholder="Nama jalan, gang, atau detail nomor rumah" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm"></textarea>
+        </div>
+
+      </div>
+
+      <div class="sticky bottom-0 bg-slate-50 flex justify-end gap-3 p-6 border-t border-slate-100">
+        <button onclick="closeModal()" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-sm transition-colors">
+          Batal
+        </button>
+        <button id="btnSave" onclick="savePenduduk()" class="px-5 py-2.5 bg-desa-600 hover:bg-desa-700 text-white font-semibold rounded-lg text-sm flex items-center gap-2 shadow-sm transition-colors">
+          <i class="fa-solid fa-floppy-disk"></i> Simpan Data
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL REKAP MUTASI MANUAL / LANGSUNG -->
+  <div id="modalMutasi" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-40 p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden p-6 space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b">
+        <h3 class="font-bold text-lg text-slate-800"><i class="fa-solid fa-right-left text-purple-600 mr-2"></i>Catat Mutasi Baru</h3>
+        <button onclick="closeMutasiModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Nama Penduduk *</label>
+        <input id="mutasiNama" type="text" placeholder="Nama lengkap warga" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Jenis Mutasi *</label>
+        <select id="mutasiJenis" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <option value="Lahir">Lahir</option>
+          <option value="Datang">Datang</option>
+          <option value="Pindah">Pindah</option>
+          <option value="Meninggal">Meninggal</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Tanggal Mutasi</label>
+        <input id="mutasiTanggal" type="date" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">Keterangan Tambahan</label>
+        <textarea id="mutasiKeterangan" rows="2" placeholder="Catatan opsional (misal: pindah ke kota X)" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeMutasiModal()" class="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg">Batal</button>
+        <button onclick="submitManualMutasi()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg">Simpan Mutasi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SUPABASE CONFIGURATION (Meskipun ada di DOM, pemicu panggilannya sudah dihilangkan) -->
+  <div id="modalSettings" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
+      
+      <div class="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+        <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-gear text-slate-500"></i> Pengaturan Supabase
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-xs text-blue-700 space-y-2">
+          <span class="font-bold flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> Petunjuk Integrasi:</span>
+          <p>Masukkan URL proyek dan Kunci API Anonim dari dashboard Supabase Anda. Pastikan Anda telah membuat tabel-tabel berikut:</p>
+          <button onclick="toggleSQLInstructions()" class="underline font-semibold block text-blue-800 hover:text-blue-900">Lihat Skrip SQL Pembuatan Tabel</button>
+        </div>
+
+        <div id="sqlInstructions" class="hidden p-3 bg-slate-900 text-emerald-400 rounded-lg font-mono text-[10px] overflow-x-auto max-h-40 border border-slate-800">
+          <pre>
+-- 1. Buat Tabel Penduduk
+create table penduduk (
+  id text primary key,
+  created_at timestamp with time zone default now(),
+  nik text not null,
+  kk text not null,
+  nama text not null,
+  jk text,
+  tempat text,
+  tanggal text,
+  agama text,
+  pendidikan text,
+  pekerjaan text,
+  "statusKawin" text,
+  "statusKeluarga" text,
+  rt text,
+  rw text,
+  dusun text,
+  nohp text,
+  alamat text
+);
+
+-- 2. Buat Tabel Mutasi Desa
+create table mutasi_desa (
+  id text primary key,
+  created_at timestamp with time zone default now(),
+  nama text not null,
+  jenis text not null,
+  tanggal text,
+  keterangan text
+);
+          </pre>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">SUPABASE_URL</label>
+          <input id="sbUrl" type="url" placeholder="https://xxxxxxxxxxxxxxxxxxxx.supabase.co" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-desa-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">SUPABASE_ANON_KEY (Public Key)</label>
+          <input id="sbKey" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-desa-500">
+        </div>
+      </div>
+
+      <div class="p-6 bg-slate-50 border-t flex justify-end gap-3">
+        <button onclick="closeSettingsModal()" class="px-4 py-2.5 bg-slate-200 text-slate-700 font-semibold rounded-lg text-sm">Batal</button>
+        <button onclick="saveSupabaseSettings()" class="px-5 py-2.5 bg-desa-600 hover:bg-desa-700 text-white font-semibold rounded-lg text-sm flex items-center gap-1.5"><i class="fa-solid fa-plug"></i> Hubungkan & Simpan</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Global States
+    let dataset = [];
+    let mutasiData = [];
+    let isConnected = false;
+    let supabaseClient = null;
+
+    // Chart instances
+    let chartJK = null;
+    let chartAgama = null;
+    let chartDusun = null;
+
+    // Initialize application on window load
+    window.onload = function() {
+      checkLoginSession();
+      initSupabase();
+      initChart();
+      loadData();
+    }
+
+    // LOGIN & AUTHENTICATION SYSTEMS
+    function toggleLoginPassword() {
+      const pwInput = document.getElementById('loginPassword');
+      const eyeIcon = document.getElementById('eyeIcon');
+      if (pwInput.type === 'password') {
+        pwInput.type = 'text';
+        eyeIcon.className = 'fa-solid fa-eye-slash text-sm';
+      } else {
+        pwInput.type = 'password';
+        eyeIcon.className = 'fa-solid fa-eye text-sm';
+      }
+    }
+
+    // Validasi Kredensial Pengguna (Sama Seperti Sebelumnya)
+    function handleLoginSubmit() {
+      const userVal = document.getElementById('loginUsername').value.trim();
+      const passVal = document.getElementById('loginPassword').value;
+      const errorDiv = document.getElementById('loginError');
+      const errorMsg = document.getElementById('loginErrorMsg');
+
+      errorDiv.classList.add('hidden');
+
+      if (!userVal || !passVal) {
+        errorMsg.innerText = "Semua kolom input wajib diisi!";
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      let role = "";
+      let displayName = "";
+
+      if (userVal === "Ameth03" && passVal === "Sayangku040490@@@") {
+        role = "Admin";
+        displayName = "Ameth03 (Admin)";
+      } else if (userVal === "Trian" && passVal === "Rambatanwetan@") {
+        role = "Operator";
+        displayName = "Trian";
+      } else {
+        errorMsg.innerText = "Username atau Password salah!";
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      sessionStorage.setItem('desa_user_role', role);
+      sessionStorage.setItem('desa_user_name', displayName);
+      
+      document.getElementById('loginLayout').classList.add('hidden');
+      document.getElementById('appLayout').classList.remove('hidden');
+      
+      document.getElementById('operatorName').innerText = displayName;
+      document.getElementById('operatorSub').innerText = role === "Admin" ? "Administrator Utama" : "Sistem Informasi Adm.";
+      document.getElementById('operatorInitial').innerText = role === "Admin" ? "AD" : "TR";
+      
+      showToast(`Selamat datang kembali, ${displayName}!`, 'success');
+    }
+
+    function checkLoginSession() {
+      const role = sessionStorage.getItem('desa_user_role');
+      const name = sessionStorage.getItem('desa_user_name');
+      
+      if (role && name) {
+        document.getElementById('loginLayout').classList.add('hidden');
+        document.getElementById('appLayout').classList.remove('hidden');
+        
+        document.getElementById('operatorName').innerText = name;
+        document.getElementById('operatorSub').innerText = role === "Admin" ? "Administrator Utama" : "Sistem Informasi Adm.";
+        document.getElementById('operatorInitial').innerText = role === "Admin" ? "AD" : "TR";
+      } else {
+        document.getElementById('loginLayout').classList.remove('hidden');
+        document.getElementById('appLayout').classList.add('hidden');
+      }
+    }
+
+    // handleLogout function
+    function handleLogout() {
+      if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+        sessionStorage.removeItem('desa_user_role');
+        sessionStorage.removeItem('desa_user_name');
+        
+        document.getElementById('loginPassword').value = '';
+        
+        checkLoginSession();
+        showToast('Anda telah keluar dari sistem.', 'info');
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.innerText = message;
+      if (type === 'error') {
+        toastIcon.className = "fa-solid fa-triangle-exclamation text-red-400 text-lg";
+        toast.className = "fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-0 opacity-100";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-check text-green-400 text-lg";
+        toast.className = "fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-0 opacity-100";
+      }
+
+      setTimeout(() => {
+        toast.className = "fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none";
+      }, 3500);
+    }
+
+    // Initialize Supabase Client (Tetap menggunakan variabel permanen tanpa menyediakan tombol "Ubah Koneksi")
+    function initSupabase() {
+      const defaultUrl = "https://chdoqiqflvpkjehzwiat.supabase.co";
+      const defaultKey = "sb_publishable_wQqCZJ7Nlx7qQ9XznvgO9w_5tQaiZOC";
+
+      const savedUrl = localStorage.getItem('supabase_url') || defaultUrl;
+      const savedKey = localStorage.getItem('supabase_key') || defaultKey;
+      
+      const statusBanner = document.getElementById('statusBanner');
+      const syncStatus = document.getElementById('syncStatus');
+      const btnSyncToCloud = document.getElementById('btnSyncToCloud');
+
+      document.getElementById('sbUrl').value = savedUrl;
+      document.getElementById('sbKey').value = savedKey;
+
+      if (savedUrl && savedKey) {
+        try {
+          supabaseClient = supabase.createClient(savedUrl, savedKey);
+          isConnected = true;
+          
+          statusBanner.innerHTML = `
+            <span class="flex items-center gap-1.5 text-emerald-200">
+              <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Koneksi Cloud (Supabase) Aktif
+            </span>
+          `;
+          statusBanner.className = "px-5 py-2 text-xs flex items-center bg-emerald-850/30 border-b border-desa-800";
+          
+          if(syncStatus) {
+            syncStatus.innerHTML = `<span class="h-2.5 w-2.5 rounded-full bg-green-500"></span> Terhubung ke Supabase Cloud`;
+          }
+          if(btnSyncToCloud) btnSyncToCloud.classList.remove('hidden');
+        } catch (e) {
+          console.error("Koneksi Supabase Gagal:", e);
+          isConnected = false;
+        }
+      } else {
+        isConnected = false;
+        statusBanner.innerHTML = `
+          <span class="flex items-center gap-1.5 text-yellow-200">
+            <span class="h-2 w-2 rounded-full bg-yellow-400 animate-pulse"></span>
+            Offline (Database Lokal)
+          </span>
+        `;
+        statusBanner.className = "px-5 py-2 text-xs flex items-center bg-yellow-600/30 border-b border-desa-800";
+        
+        if(syncStatus) {
+          syncStatus.innerHTML = `<span class="h-2.5 w-2.5 rounded-full bg-red-500"></span> Terputus (Mode Lokal Aktif)`;
+        }
+        if(btnSyncToCloud) btnSyncToCloud.classList.add('hidden');
+      }
+    }
+
+    // Toggle SQL Instructions
+    function toggleSQLInstructions() {
+      const el = document.getElementById('sqlInstructions');
+      el.classList.toggle('hidden');
+    }
+
+    // Save Supabase Settings
+    function saveSupabaseSettings() {
+      const url = document.getElementById('sbUrl').value.trim();
+      const key = document.getElementById('sbKey').value.trim();
+
+      if (!url || !key) {
+        showToast('Gagal: URL dan API Key tidak boleh kosong!', 'error');
+        return;
+      }
+
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+
+      showToast('Konfigurasi database cloud berhasil disimpan!', 'success');
+      closeSettingsModal();
+      initSupabase();
+      loadData();
+    }
+
+    // Navigation
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+
+      document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('bg-desa-800', 'text-white', 'font-medium');
+        btn.classList.add('text-slate-300');
+      });
+
+      const activeBtn = document.getElementById('btn-' + id);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-desa-800', 'text-white', 'font-medium');
+        activeBtn.classList.remove('text-slate-300');
+      }
+    }
+
+    // Load Data (Local/Cloud)
+    async function loadData() {
+      if (isConnected && supabaseClient) {
+        try {
+          let { data: dbPenduduk, error: errP } = await supabaseClient
+            .from('penduduk')
+            .select('*');
+          
+          if (errP) throw errP;
+          dataset = dbPenduduk || [];
+
+          let { data: dbMutasi, error: errM } = await supabaseClient
+            .from('mutasi_desa')
+            .select('*');
+          
+          if (errM) throw errM;
+          mutasiData = dbMutasi || [];
+          
+          localStorage.setItem('buku_induk', JSON.stringify(dataset));
+          localStorage.setItem('mutasi_desa', JSON.stringify(mutasiData));
+        } catch (e) {
+          console.error("Gagal sinkron cloud, menggunakan data lokal:", e);
+          showToast('Koneksi database gagal. Menggunakan data lokal sementara.', 'error');
+          loadLocalFallback();
+        }
+      } else {
+        loadLocalFallback();
+      }
+
+      renderTable();
+      renderKK();
+      renderMutasi();
+      updateDashboard();
+    }
+
+    function loadLocalFallback() {
+      try {
+        dataset = JSON.parse(localStorage.getItem('buku_induk')) || [];
+      } catch (e) {
+        dataset = [];
+      }
+
+      try {
+        mutasiData = JSON.parse(localStorage.getItem('mutasi_desa')) || [];
+      } catch (e) {
+        mutasiData = [];
+      }
+    }
+
+    // Save Storage helper for Offline State
+    function saveLocalStorage() {
+      localStorage.setItem('buku_induk', JSON.stringify(dataset));
+      localStorage.setItem('mutasi_desa', JSON.stringify(mutasiData));
+    }
+
+    // Sync Local Database back to Supabase
+    async function syncLocalToSupabase() {
+      if (!isConnected || !supabaseClient) return;
+
+      const btn = document.getElementById('btnSyncToCloud');
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Menyinkronkan...`;
+      btn.disabled = true;
+
+      try {
+        let localP = JSON.parse(localStorage.getItem('buku_induk')) || [];
+        let localM = JSON.parse(localStorage.getItem('mutasi_desa')) || [];
+
+        if (localP.length > 0) {
+          for (let p of localP) {
+            await supabaseClient.from('penduduk').upsert(p);
+          }
+        }
+
+        if (localM.length > 0) {
+          for (let m of localM) {
+            await supabaseClient.from('mutasi_desa').upsert(m);
+          }
+        }
+
+        showToast('Sinkronisasi data berhasil!', 'success');
+        loadData();
+      } catch (e) {
+        console.error(e);
+        showToast('Gagal mengupload beberapa baris data.', 'error');
+      } finally {
+        btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Upload Data Lokal ke Cloud`;
+        btn.disabled = false;
+      }
+    }
+
+    // Modal Handlers
+    function openModal() {
+      document.getElementById('modalTitle').innerText = "Tambah Data Penduduk Baru";
+      document.getElementById('modalPenduduk').classList.replace('hidden', 'flex');
+      setTimeout(() => {
+        document.getElementById('modalContainer').classList.replace('scale-95', 'scale-100');
+      }, 50);
+    }
+
+    function closeModal() {
+      document.getElementById('modalContainer').classList.replace('scale-100', 'scale-95');
+      setTimeout(() => {
+        document.getElementById('modalPenduduk').classList.replace('flex', 'hidden');
+        clearForm();
+      }, 150);
+    }
+
+    function clearForm() {
+      document.getElementById('editId').value = '';
+      document.getElementById('nik').value = '';
+      document.getElementById('kkInput').value = '';
+      document.getElementById('nama').value = '';
+      document.getElementById('jk').value = 'L';
+      document.getElementById('tempat').value = '';
+      document.getElementById('tanggal').value = '';
+      document.getElementById('agama').value = 'Islam';
+      document.getElementById('pendidikan').value = '';
+      document.getElementById('pekerjaan').value = '';
+      document.getElementById('statusKawin').value = 'Belum Kawin';
+      document.getElementById('statusKeluarga').value = 'Kepala Keluarga';
+      document.getElementById('rt').value = '';
+      document.getElementById('rw').value = '';
+      document.getElementById('dusun').value = '';
+      document.getElementById('nohp').value = '';
+      document.getElementById('alamat').value = '';
+    }
+
+    function openSettingsModal() {
+      document.getElementById('modalSettings').classList.replace('hidden', 'flex');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('modalSettings').classList.replace('flex', 'hidden');
+    }
+
+    // CRUD - Save Penduduk
+    async function savePenduduk() {
+      const btn = document.getElementById('btnSave');
+      const originalText = btn.innerHTML;
+      
+      const id = document.getElementById('editId').value || 'id_' + Date.now() + Math.random().toString(36).substr(2, 5);
+      
+      const data = {
+        id: id,
+        nik: document.getElementById('nik').value.trim(),
+        kk: document.getElementById('kkInput').value.trim(),
+        nama: document.getElementById('nama').value.trim(),
+        jk: document.getElementById('jk').value,
+        tempat: document.getElementById('tempat').value.trim(),
+        tanggal: document.getElementById('tanggal').value,
+        agama: document.getElementById('agama').value.trim(),
+        pendidikan: document.getElementById('pendidikan').value.trim(),
+        pekerjaan: document.getElementById('pekerjaan').value.trim(),
+        statusKawin: document.getElementById('statusKawin').value,
+        statusKeluarga: document.getElementById('statusKeluarga').value,
+        rt: document.getElementById('rt').value.trim(),
+        rw: document.getElementById('rw').value.trim(),
+        dusun: document.getElementById('dusun').value.trim(),
+        nohp: document.getElementById('nohp').value.trim(),
+        alamat: document.getElementById('alamat').value.trim()
+      };
+
+      if (data.nik.length !== 16 || isNaN(data.nik)) {
+        showToast('Gagal: NIK harus 16 digit angka', 'error');
+        return;
+      }
+
+      if (data.kk.length !== 16 || isNaN(data.kk)) {
+        showToast('Gagal: Nomor KK harus 16 digit angka', 'error');
+        return;
+      }
+
+      if (!data.nama) {
+        showToast('Gagal: Nama lengkap wajib diisi', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Menyimpan...`;
+
+      if (isConnected && supabaseClient) {
+        try {
+          let { error } = await supabaseClient
+            .from('penduduk')
+            .upsert([data]);
+          if (error) throw error;
+          showToast('Data berhasil disimpan ke cloud database!', 'success');
+        } catch (e) {
+          console.error("Gagal menyimpan ke cloud: ", e);
+          showToast('Gagal sinkron cloud, perubahan disimpan di lokal.', 'error');
+        }
+      } else {
+        showToast('Perubahan data disimpan di penyimpanan lokal.', 'success');
+      }
+
+      const index = dataset.findIndex(x => x.id === data.id);
+      if (index >= 0) {
+        dataset[index] = data;
+      } else {
+        dataset.push(data);
+      }
+      
+      saveLocalStorage();
+      renderTable();
+      renderKK();
+      updateDashboard();
+      closeModal();
+      
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+
+    // CRUD - Edit Penduduk (Form Hydrator)
+    function editPenduduk(id) {
+      const data = dataset.find(x => x.id == id);
+      if (!data) {
+        showToast('Data tidak ditemukan', 'error');
+        return;
+      }
+
+      document.getElementById('editId').value = data.id;
+      document.getElementById('nik').value = data.nik || '';
+      document.getElementById('kkInput').value = data.kk || '';
+      document.getElementById('nama').value = data.nama || '';
+      document.getElementById('jk').value = data.jk || 'L';
+      document.getElementById('tempat').value = data.tempat || '';
+      document.getElementById('tanggal').value = data.tanggal || '';
+      document.getElementById('agama').value = data.agama || 'Islam';
+      document.getElementById('pendidikan').value = data.pendidikan || '';
+      document.getElementById('pekerjaan').value = data.pekerjaan || '';
+      document.getElementById('statusKawin').value = data.statusKawin || 'Belum Kawin';
+      document.getElementById('statusKeluarga').value = data.statusKeluarga || 'Kepala Keluarga';
+      document.getElementById('rt').value = data.rt || '';
+      document.getElementById('rw').value = data.rw || '';
+      document.getElementById('dusun').value = data.dusun || '';
+      document.getElementById('nohp').value = data.nohp || '';
+      document.getElementById('alamat').value = data.alamat || '';
+
+      document.getElementById('modalTitle').innerText = "Edit Data Penduduk";
+      document.getElementById('modalPenduduk').classList.replace('hidden', 'flex');
+      setTimeout(() => {
+        document.getElementById('modalContainer').classList.replace('scale-95', 'scale-100');
+      }, 50);
+    }
+
+    // CRUD - Delete Penduduk
+    async function deletePenduduk(id) {
+      if (!confirm('Apakah Anda yakin ingin menghapus data penduduk ini?')) return;
+
+      if (isConnected && supabaseClient) {
+        try {
+          const { error } = await supabaseClient
+            .from('penduduk')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+          showToast('Data terhapus dari cloud database!', 'success');
+        } catch (e) {
+          console.error("Gagal menghapus data dari Supabase:", e);
+          showToast('Gagal hapus di database cloud, dihapus secara lokal saja.', 'error');
+        }
+      } else {
+        showToast('Data berhasil dihapus dari penyimpanan lokal.', 'success');
+      }
+
+      dataset = dataset.filter(x => x.id != id);
+      saveLocalStorage();
+      renderTable();
+      renderKK();
+      updateDashboard();
+    }
+
+    // MUTASI ACTIONS (Inline & Manual)
+    function buatMutasi(id) {
+      const data = dataset.find(x => x.id == id);
+      if (!data) return;
+
+      const jenis = prompt('Jenis Mutasi (Lahir / Datang / Pindah / Meninggal):');
+      if (!jenis) return;
+
+      const formats = ['Lahir', 'Datang', 'Pindah', 'Meninggal'];
+      const formattedJenis = formats.find(f => f.toLowerCase() === jenis.trim().toLowerCase()) || jenis.trim();
+
+      const ket = prompt('Keterangan Mutasi:') || '';
+
+      saveMutasiEntry(data.nama, formattedJenis, new Date().toISOString().split('T')[0], ket);
+    }
+
+    // Direct Mutasi
+    function openDirectMutasiModal() {
+      document.getElementById('mutasiNama').value = '';
+      document.getElementById('mutasiJenis').value = 'Pindah';
+      document.getElementById('mutasiTanggal').value = new Date().toISOString().split('T')[0];
+      document.getElementById('mutasiKeterangan').value = '';
+      document.getElementById('modalMutasi').classList.replace('hidden', 'flex');
+    }
+
+    // closeMutasiModal function
+    function closeMutasiModal() {
+      document.getElementById('modalMutasi').classList.replace('flex', 'hidden');
+    }
+
+    function submitManualMutasi() {
+      const nama = document.getElementById('mutasiNama').value.trim();
+      const jenis = document.getElementById('mutasiJenis').value;
+      const tgl = document.getElementById('mutasiTanggal').value;
+      const ket = document.getElementById('mutasiKeterangan').value.trim();
+
+      if (!nama) {
+        showToast('Gagal: Nama harus diisi', 'error');
+        return;
+      }
+
+      saveMutasiEntry(nama, jenis, tgl, ket);
+      closeMutasiModal();
+    }
+
+    async function saveMutasiEntry(nama, jenis, tanggal, keterangan) {
+      const id = 'mut_' + Date.now() + Math.random().toString(36).substr(2, 5);
+      const entry = { id, nama, jenis, tanggal, keterangan };
+
+      if (isConnected && supabaseClient) {
+        try {
+          let { error } = await supabaseClient
+            .from('mutasi_desa')
+            .upsert([entry]);
+          if (error) throw error;
+          showToast('Mutasi berhasil dicatat di cloud database!', 'success');
+        } catch (e) {
+          console.error(e);
+          showToast('Gagal simpan di cloud, disimpan secara lokal.', 'error');
+        }
+      } else {
+        showToast('Mutasi dicatat di penyimpanan lokal.', 'success');
+      }
+
+      mutasiData.push(entry);
+      saveLocalStorage();
+      renderMutasi();
+    }
+
+    async function deleteMutasi(id) {
+      if (!confirm('Hapus catatan riwayat mutasi ini?')) return;
+
+      if (isConnected && supabaseClient) {
+        try {
+          const { error } = await supabaseClient
+            .from('mutasi_desa')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+          showToast('Catatan mutasi terhapus dari cloud!', 'success');
+        } catch (e) {
+          console.error(e);
+          showToast('Gagal hapus di database cloud.', 'error');
+        }
+      }
+
+      mutasiData = mutasiData.filter(x => x.id !== id);
+      saveLocalStorage();
+      renderMutasi();
+    }
+
+    // RENDERS & DATA MANIPULATION
+    function renderTable() {
+      const tbody = document.getElementById('tablePenduduk');
+      if (!tbody) return;
+
+      if (dataset.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-400">Belum ada data penduduk terdaftar.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      dataset.forEach((item) => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-4 font-mono font-medium text-slate-800">${item.nik}</td>
+            <td class="p-4 font-mono text-slate-500">${item.kk}</td>
+            <td class="p-4 font-semibold text-slate-800">${item.nama}</td>
+            <td class="p-4">
+              <span class="px-2 py-1 rounded text-xs font-semibold ${item.jk === 'L' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}">
+                ${item.jk}
+              </span>
+            </td>
+            <td class="p-4 text-xs">${item.tempat || '-'},<br>${item.tanggal || '-'}</td>
+            <td class="p-4">${item.agama || '-'}</td>
+            <td class="p-4 text-xs">${item.pendidikan || '-'}</td>
+            <td class="p-4 text-xs">${item.pekerjaan || '-'}</td>
+            <td class="p-4 font-mono">${item.rt || '000'}/${item.rw || '000'}</td>
+            <td class="p-4">${item.dusun || '-'}</td>
+            <td class="p-4 text-xs">
+              <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
+                ${item.statusKeluarga || '-'}
+              </span>
+            </td>
+            <td class="p-4">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="buatMutasi('${item.id}')" title="Mutasikan Penduduk" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                  Mutasi
+                </button>
+                <button onclick="editPenduduk('${item.id}')" title="Ubah Data" class="bg-amber-100 hover:bg-amber-200 text-amber-700 p-1.5 rounded-lg text-xs transition-colors">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="deletePenduduk('${item.id}')" title="Hapus Data" class="bg-red-100 hover:bg-red-200 text-red-700 p-1.5 rounded-lg text-xs transition-colors">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderKK() {
+      const tbody = document.getElementById('tableKK');
+      if (!tbody) return;
+
+      if (dataset.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400">Tidak ada data Kartu Keluarga.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      let kkMap = {};
+
+      dataset.forEach(item => {
+        if (!item.kk) return;
+
+        if (!kkMap[item.kk]) {
+          kkMap[item.kk] = {
+            kepala: '-',
+            jumlah: 0,
+            dusun: item.dusun || '-'
+          };
+        }
+
+        kkMap[item.kk].jumlah++;
+
+        if (item.statusKeluarga === 'Kepala Keluarga') {
+          kkMap[item.kk].kepala = item.nama;
+          kkMap[item.kk].dusun = item.dusun || '-';
+        }
+      });
+
+      const keys = Object.keys(kkMap);
+      if (keys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400">Tidak ada data Kartu Keluarga.</td></tr>`;
+        return;
+      }
+
+      keys.forEach(noKK => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-4 font-mono font-semibold text-slate-700">${noKK}</td>
+            <td class="p-4 font-bold text-slate-800">${kkMap[noKK].kepala}</td>
+            <td class="p-4">
+              <span class="px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-bold">
+                ${kkMap[noKK].jumlah} Anggota
+              </span>
+            </td>
+            <td class="p-4 text-slate-600">${kkMap[noKK].dusun}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderMutasi() {
+      const tbody = document.getElementById('tableMutasi');
+      if (!tbody) return;
+
+      if (mutasiData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Belum ada riwayat mutasi penduduk.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      mutasiData.forEach(item => {
+        let labelColor = 'bg-slate-100 text-slate-700';
+        if (item.jenis === 'Lahir') labelColor = 'bg-green-50 text-green-700';
+        if (item.jenis === 'Datang') labelColor = 'bg-blue-50 text-blue-700';
+        if (item.jenis === 'Pindah') labelColor = 'bg-amber-50 text-amber-700';
+        if (item.jenis === 'Meninggal') labelColor = 'bg-red-50 text-red-700';
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-4 font-semibold text-slate-800">${item.nama}</td>
+            <td class="p-4">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold ${labelColor}">
+                ${item.jenis}
+              </span>
+            </td>
+            <td class="p-4 text-xs font-mono">${item.tanggal || '-'}</td>
+            <td class="p-4 text-slate-500 italic text-xs">${item.keterangan || '-'}</td>
+            <td class="p-4 text-center">
+              <button onclick="deleteMutasi('${item.id}')" title="Hapus" class="text-red-600 hover:text-red-900 px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // SEARCH FILTER
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+      const keyword = this.value.toLowerCase();
+      const rows = document.querySelectorAll('#tablePenduduk tr');
+
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(keyword) ? '' : 'none';
+      });
+    });
+
+    // DASHBOARD ANALYTICS & STATS
+    function updateDashboard() {
+      const total = dataset.length;
+      const laki = dataset.filter(x => x.jk === 'L').length;
+      const perempuan = dataset.filter(x => x.jk === 'P').length;
+      const totalKK = new Set(dataset.map(x => x.kk).filter(Boolean)).size;
+
+      document.getElementById('totalPenduduk').innerText = total;
+      document.getElementById('totalLaki').innerText = laki;
+      document.getElementById('totalPerempuan').innerText = perempuan;
+      document.getElementById('totalKK').innerText = totalKK;
+
+      updateChartData();
+    }
+
+    // ANALYTICAL CHARTS LOGIC
+    function initChart() {
+      const jkCanvas = document.getElementById('chartJK');
+      const agamaCanvas = document.getElementById('chartAgama');
+      const dusunCanvas = document.getElementById('chartDusun');
+
+      if (!jkCanvas || !agamaCanvas || !dusunCanvas) return;
+
+      chartJK = new Chart(jkCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['Laki-Laki', 'Perempuan'],
+          datasets: [{
+            data: [0, 0],
+            backgroundColor: ['#2563eb', '#db2777'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+
+      chartAgama = new Chart(agamaCanvas, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Warga',
+            data: [],
+            backgroundColor: '#0d9488',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      chartDusun = new Chart(dusunCanvas, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Penduduk',
+            data: [],
+            backgroundColor: '#6366f1',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function updateChartData() {
+      if (!chartJK || !chartAgama || !chartDusun) return;
+
+      const laki = dataset.filter(x => x.jk === 'L').length;
+      const perempuan = dataset.filter(x => x.jk === 'P').length;
+
+      chartJK.data.datasets[0].data = [laki, perempuan];
+      chartJK.update();
+
+      let agamaObj = {};
+      dataset.forEach(item => {
+        let ag = item.agama || 'Lainnya';
+        agamaObj[ag] = (agamaObj[ag] || 0) + 1;
+      });
+
+      chartAgama.data.labels = Object.keys(agamaObj);
+      chartAgama.data.datasets[0].data = Object.values(agamaObj);
+      chartAgama.update();
+
+      let dusunObj = {};
+      dataset.forEach(item => {
+        if (!item.dusun) return;
+        dusunObj[item.dusun] = (dusunObj[item.dusun] || 0) + 1;
+      });
+
+      chartDusun.data.labels = Object.keys(dusunObj);
+      chartDusun.data.datasets[0].data = Object.values(dusunObj);
+      chartDusun.update();
+    }
+
+    // UTILITIES - EXPORT & BACKUP
+    function exportExcel() {
+      if(dataset.length === 0) {
+        showToast('Tidak ada data kependudukan untuk diekspor', 'error');
+        return;
+      }
+      
+      const cleanData = dataset.map(item => ({
+        "NIK": item.nik,
+        "Nomor KK": item.kk,
+        "Nama Lengkap": item.nama,
+        "Jenis Kelamin": item.jk,
+        "Tempat Lahir": item.tempat,
+        "Tanggal Lahir": item.tanggal,
+        "Agama": item.agama,
+        "Pendidikan Terakhir": item.pendidikan,
+        "Pekerjaan": item.pekerjaan,
+        "RT": item.rt,
+        "RW": item.rw,
+        "Dusun": item.dusun,
+        "Status Kawin": item.statusKawin,
+        "Hubungan Keluarga": item.statusKeluarga,
+        "No. HP": item.nohp,
+        "Alamat Lengkap": item.alamat
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(cleanData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Data Penduduk');
+      
+      if(mutasiData.length > 0) {
+        const cleanMutasi = mutasiData.map(m => ({
+          "Nama Penduduk": m.nama,
+          "Jenis Mutasi": m.jenis,
+          "Tanggal Mutasi": m.tanggal,
+          "Keterangan": m.keterangan
+        }));
+        const wsMutasi = XLSX.utils.json_to_sheet(cleanMutasi);
+        XLSX.utils.book_append_sheet(wb, wsMutasi, 'Data Mutasi');
+      }
+
+      XLSX.writeFile(wb, 'Buku_Induk_Penduduk_Desa.xlsx');
+      showToast('Data berhasil diekspor ke format Excel!', 'success');
+    }
+
+    function backupJSON() {
+      const backupData = {
+        meta: {
+          app: "Buku Induk Penduduk Desa",
+          exported_at: new Date().toISOString()
+        },
+        penduduk: dataset,
+        mutasi: mutasiData
+      };
+
+      const dataStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `backup_buku_induk_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      showToast('Ekspor file backup JSON berhasil!', 'success');
+    }
+
+    function restoreJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById('restoreFileName').innerText = file.name;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          
+          let importedP = [];
+          let importedM = [];
+
+          if (Array.isArray(parsed)) {
+            importedP = parsed;
+          } else if (parsed.penduduk) {
+            importedP = parsed.penduduk;
+            importedM = parsed.mutasi || [];
+          }
+
+          if (importedP.length === 0 && importedM.length === 0) {
+            showToast('File JSON kosong atau tidak sesuai struktur data.', 'error');
+            return;
+          }
+
+          if(confirm(`Apakah Anda yakin ingin memulihkan ${importedP.length} data penduduk & ${importedM.length} data mutasi? Ini akan menimpa data yang saat ini ada.`)) {
+            dataset = importedP;
+            mutasiData = importedM;
+            
+            saveLocalStorage();
+            
+            if (isConnected && supabaseClient) {
+              await syncLocalToSupabase();
+            } else {
+              renderTable();
+              renderKK();
+              renderMutasi();
+              updateDashboard();
+              showToast('Restorasi data lokal berhasil dilakukan!', 'success');
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Gagal memproses file JSON. Format rusak.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+
+</body>
+</html>
