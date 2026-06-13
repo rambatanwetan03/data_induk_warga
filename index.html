@@ -42,22 +42,27 @@
 
 <body class="bg-slate-50 font-sans text-slate-800 min-h-screen overflow-hidden">
 
-  <!-- LOGIN LAYOUT -->
-  <div id="loginLayout" class="fixed inset-0 bg-gradient-to-br from-desa-900 via-desa-800 to-slate-900 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100 space-y-6">
+  <!-- LOGIN LAYOUT (Sekarang berfungsi sebagai POP-UP MODAL yang tersembunyi secara default) -->
+  <div id="loginLayout" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100 space-y-6 relative">
+      
+      <!-- Tombol Tutup Pop-up Login -->
+      <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
       <div class="text-center">
         <div class="inline-flex p-4 bg-desa-50 text-desa-600 rounded-full text-3xl mb-3">
           <i class="fa-solid fa-building-user text-desa-600"></i>
         </div>
-        <h2 class="text-2xl font-bold text-slate-800">Sistem Buku Induk</h2>
-        <p class="text-xs text-slate-500 mt-1">Desa Rambatan Wetan - Silakan Masuk</p>
+        <h2 class="text-2xl font-bold text-slate-800">Login Administrator</h2>
+        <p class="text-xs text-slate-500 mt-1">Sistem Buku Induk Desa Rambatan Wetan</p>
       </div>
       
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Username</label>
           <div class="relative">
-            <!-- Menambahkan pemicu Enter pada input Username -->
             <input id="loginUsername" type="text" onkeydown="if(event.key === 'Enter') handleLoginSubmit()" placeholder="Masukkan Username" class="w-full border border-slate-300 rounded-lg py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
             <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
           </div>
@@ -66,7 +71,6 @@
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">Password</label>
           <div class="relative">
-            <!-- Menambahkan pemicu Enter pada input Password -->
             <input id="loginPassword" type="password" onkeydown="if(event.key === 'Enter') handleLoginSubmit()" placeholder="Masukkan Password" class="w-full border border-slate-300 rounded-lg py-2.5 pl-10 pr-10 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
             <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
             <button onclick="toggleLoginPassword()" type="button" class="absolute right-3 top-2.5 p-1 text-slate-400 hover:text-slate-600 focus:outline-none" title="Buka/Tutup Password">
@@ -81,7 +85,7 @@
         </div>
         
         <button onclick="handleLoginSubmit()" class="w-full bg-desa-600 hover:bg-desa-700 text-white font-semibold py-3 rounded-lg text-sm transition-colors shadow-md shadow-desa-900/10 flex items-center justify-center gap-2">
-          <i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem
+          <i class="fa-solid fa-right-to-bracket"></i> Verifikasi & Masuk
         </button>
       </div>
       
@@ -91,8 +95,8 @@
     </div>
   </div>
 
-  <!-- MAIN APP LAYOUT (Hidden by default until logged in) -->
-  <div id="appLayout" class="hidden flex flex-col md:flex-row h-screen w-screen overflow-hidden">
+  <!-- MAIN APP LAYOUT (Langsung aktif sejak awal) -->
+  <div id="appLayout" class="flex flex-col md:flex-row h-screen w-screen overflow-hidden">
 
     <!-- SIDEBAR -->
     <aside class="w-full md:w-72 bg-desa-900 text-white flex flex-col shadow-xl z-20 flex-shrink-0">
@@ -106,7 +110,7 @@
         </p>
       </div>
 
-      <!-- Connection Status Banner (Hanya menampilkan status koneksi tanpa menu ubah) -->
+      <!-- Connection Status Banner -->
       <div id="statusBanner" class="px-5 py-2 text-xs flex items-center bg-yellow-600/30 text-yellow-200 border-b border-desa-800">
         <span class="flex items-center gap-1.5">
           <span class="h-2 w-2 rounded-full bg-yellow-400 animate-pulse"></span>
@@ -131,27 +135,32 @@
           <i class="fa-solid fa-house-user text-desa-400"></i> Kartu Keluarga
         </button>
 
-        <button onclick="showPage('laporan')" id="btn-laporan" class="menu-btn w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white">
+        <!-- Menu laporan (Tersembunyi otomatis jika berstatus Warga) -->
+        <button onclick="showPage('laporan')" id="btn-laporan" class="menu-btn-admin menu-btn w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white">
           <i class="fa-solid fa-file-invoice text-desa-400"></i> Laporan & Sinkronisasi
         </button>
       </nav>
 
+      <!-- BAGIAN BAWAH SIDEBAR (Profil & Opsi Login/Logout) -->
       <div class="p-4 border-t border-desa-800 bg-desa-950 flex flex-col gap-3">
         <div class="flex items-center">
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-full bg-desa-700 flex items-center justify-center font-bold text-sm" id="operatorInitial">
-              OP
+              WD
             </div>
             <div>
-              <div class="text-xs font-semibold" id="operatorName">Operator Desa</div>
-              <div class="text-[10px] opacity-60" id="operatorSub">Sistem Informasi Adm.</div>
+              <div class="text-xs font-semibold" id="operatorName">Warga Desa</div>
+              <div class="text-[10px] opacity-60" id="operatorSub">Pengunjung Publik</div>
             </div>
           </div>
         </div>
         
-        <!-- LOGOUT BUTTON -->
-        <button onclick="handleLogout()" class="w-full border border-desa-800 hover:border-red-500 hover:text-red-300 text-slate-400 rounded-lg py-2 px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
+        <!-- BUTTON LOGIN/LOGOUT OPERATOR DI BAGIAN BAWAH -->
+        <button id="btnSidebarLogout" onclick="handleLogout()" class="hidden w-full border border-desa-800 hover:border-red-500 hover:text-red-300 text-slate-400 rounded-lg py-2 px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
           <i class="fa-solid fa-power-off"></i> Keluar Sistem
+        </button>
+        <button id="btnSidebarLogin" onclick="openLoginModal()" class="w-full bg-desa-600 hover:bg-desa-700 text-white rounded-lg py-2.5 px-3 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md shadow-desa-950/25">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk Admin / Operator
         </button>
       </div>
     </aside>
@@ -165,7 +174,7 @@
           <h2 class="text-xl md:text-2xl font-bold text-slate-800">Buku Induk Kependudukan</h2>
           <p class="text-xs md:text-sm text-slate-500">Sistem Administrasi dan Analitik Penduduk Desa Mandiri</p>
         </div>
-        <div class="flex gap-2 w-full sm:w-auto">
+        <div class="flex gap-2 w-full sm:w-auto" id="btnTambahPendudukContainer">
           <button onclick="openModal()" class="flex-1 sm:flex-initial bg-desa-600 hover:bg-desa-700 text-white font-medium px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm transition-shadow shadow-sm">
             <i class="fa-solid fa-plus"></i> Tambah Penduduk
           </button>
@@ -174,6 +183,12 @@
 
       <!-- MAIN BODY PAGES -->
       <main class="flex-1">
+
+        <!-- BANNER KHUSUS WARGA / PUBLIC -->
+        <div id="bannerWarga" class="bg-emerald-50 border-b border-emerald-100 px-6 py-3 text-sm text-emerald-800 flex items-center gap-3">
+          <i class="fa-solid fa-circle-info text-emerald-600 text-base"></i>
+          <span>Anda sedang masuk sebagai <strong>Warga/Pengunjung</strong> (Mode Lihat Data). Beberapa informasi data sensitif disensor untuk keamanan privasi kependudukan.</span>
+        </div>
 
         <!-- DASHBOARD PAGE -->
         <section id="dashboard" class="page p-4 md:p-8 space-y-6">
@@ -266,7 +281,7 @@
                     <th class="p-4">RT/RW</th>
                     <th class="p-4">Dusun</th>
                     <th class="p-4">Status Hubungan</th>
-                    <th class="p-4 text-center">Aksi</th>
+                    <th class="p-4 text-center header-action">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="tablePenduduk" class="divide-y divide-slate-100 text-slate-600">
@@ -314,7 +329,7 @@
                 <h3 class="font-bold text-lg text-slate-800">Catatan Mutasi Penduduk</h3>
                 <p class="text-xs text-slate-500 mt-1">Data perpindahan penduduk (Lahir, Meninggal, Pindah, Datang)</p>
               </div>
-              <button onclick="openDirectMutasiModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs px-3 py-2 rounded-lg flex items-center gap-1">
+              <button id="btnCatatMutasiManual" onclick="openDirectMutasiModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs px-3 py-2 rounded-lg flex items-center gap-1">
                 <i class="fa-solid fa-plus"></i> Catat Mutasi Manual
               </button>
             </div>
@@ -326,7 +341,7 @@
                     <th class="p-4">Jenis Mutasi</th>
                     <th class="p-4">Tanggal Catat</th>
                     <th class="p-4">Keterangan</th>
-                    <th class="p-4 text-center">Aksi</th>
+                    <th class="p-4 text-center header-action">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="tableMutasi" class="divide-y divide-slate-100 text-slate-600">
@@ -388,7 +403,6 @@
               </div>
 
               <div class="flex gap-2">
-                <!-- Tombol menu setup manual disembunyikan agar koneksi tetap permanen -->
                 <button onclick="syncLocalToSupabase()" id="btnSyncToCloud" class="hidden bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
                   <i class="fa-solid fa-cloud-arrow-up"></i> Upload Data Lokal ke Cloud
                 </button>
@@ -429,7 +443,7 @@
             <label class="block text-xs font-semibold text-slate-500 mb-1">Nomor Induk Kependudukan (NIK) *</label>
             <input id="nik" type="text" maxlength="16" placeholder="16 Digit NIK" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
           </div>
-          <!-- KK (ID Diubah menjadi kkInput demi menghindari tabrakan ID) -->
+          <!-- KK -->
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Nomor Kartu Keluarga (KK) *</label>
             <input id="kkInput" type="text" maxlength="16" placeholder="16 Digit Nomor KK" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-desa-500 focus:outline-none text-sm">
@@ -591,7 +605,7 @@
     </div>
   </div>
 
-  <!-- MODAL SUPABASE CONFIGURATION (Meskipun ada di DOM, pemicu panggilannya sudah dihilangkan) -->
+  <!-- MODAL SUPABASE CONFIGURATION -->
   <div id="modalSettings" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
       
@@ -698,7 +712,34 @@ create table mutasi_desa (
       }
     }
 
-    // Validasi Kredensial Pengguna (Sama Seperti Sebelumnya)
+    // Fungsi membuka / menutup jendela pop-up login
+    function openLoginModal() {
+      document.getElementById('loginLayout').classList.replace('hidden', 'flex');
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginLayout').classList.replace('flex', 'hidden');
+    }
+
+    // Fungsi Masuk Tanpa Login (Warga Umum / Pengunjung)
+    function loginSebagaiWarga() {
+      sessionStorage.setItem('desa_user_role', 'Warga');
+      sessionStorage.setItem('desa_user_name', 'Warga Desa');
+      
+      document.getElementById('loginLayout').classList.replace('flex', 'hidden');
+      document.getElementById('appLayout').classList.remove('hidden');
+      
+      // Sesuaikan Operator Profile Info di Sidebar
+      document.getElementById('operatorName').innerText = "Warga Desa";
+      document.getElementById('operatorSub').innerText = "Pengunjung Publik";
+      document.getElementById('operatorInitial').innerText = "WD";
+      
+      applyRoleRestrictions();
+      showToast('Masuk sebagai Pengunjung Publik Berhasil.', 'success');
+      loadData();
+    }
+
+    // Validasi Kredensial Pengguna 
     function handleLoginSubmit() {
       const userVal = document.getElementById('loginUsername').value.trim();
       const passVal = document.getElementById('loginPassword').value;
@@ -731,30 +772,74 @@ create table mutasi_desa (
       sessionStorage.setItem('desa_user_role', role);
       sessionStorage.setItem('desa_user_name', displayName);
       
-      document.getElementById('loginLayout').classList.add('hidden');
+      document.getElementById('loginLayout').classList.replace('flex', 'hidden');
       document.getElementById('appLayout').classList.remove('hidden');
       
       document.getElementById('operatorName').innerText = displayName;
       document.getElementById('operatorSub').innerText = role === "Admin" ? "Administrator Utama" : "Sistem Informasi Adm.";
       document.getElementById('operatorInitial').innerText = role === "Admin" ? "AD" : "TR";
       
+      applyRoleRestrictions();
       showToast(`Selamat datang kembali, ${displayName}!`, 'success');
+      loadData();
     }
 
+    // Modifikasi sesi: Jika belum login, otomatis berstatus sebagai "Warga"
     function checkLoginSession() {
-      const role = sessionStorage.getItem('desa_user_role');
-      const name = sessionStorage.getItem('desa_user_name');
+      let role = sessionStorage.getItem('desa_user_role');
+      let name = sessionStorage.getItem('desa_user_name');
       
-      if (role && name) {
-        document.getElementById('loginLayout').classList.add('hidden');
-        document.getElementById('appLayout').classList.remove('hidden');
-        
+      if (!role || !name) {
+        sessionStorage.setItem('desa_user_role', 'Warga');
+        sessionStorage.setItem('desa_user_name', 'Warga Desa');
+        role = 'Warga';
+        name = 'Warga Desa';
+      }
+
+      document.getElementById('loginLayout').classList.add('hidden');
+      document.getElementById('appLayout').classList.remove('hidden');
+      
+      if (role === 'Warga') {
+        document.getElementById('operatorName').innerText = "Warga Desa";
+        document.getElementById('operatorSub').innerText = "Pengunjung Publik";
+        document.getElementById('operatorInitial').innerText = "WD";
+      } else {
         document.getElementById('operatorName').innerText = name;
         document.getElementById('operatorSub').innerText = role === "Admin" ? "Administrator Utama" : "Sistem Informasi Adm.";
         document.getElementById('operatorInitial').innerText = role === "Admin" ? "AD" : "TR";
+      }
+      applyRoleRestrictions();
+    }
+
+    // Fungsi untuk membatasi UI bagi Warga Umum
+    function applyRoleRestrictions() {
+      const role = sessionStorage.getItem('desa_user_role');
+      const btnTambah = document.getElementById('btnTambahPendudukContainer');
+      const btnMutasiManual = document.getElementById('btnCatatMutasiManual');
+      const bannerWarga = document.getElementById('bannerWarga');
+      const navLaporan = document.getElementById('btn-laporan');
+      const actionHeaders = document.querySelectorAll('.header-action');
+      const btnSidebarLogin = document.getElementById('btnSidebarLogin');
+      const btnSidebarLogout = document.getElementById('btnSidebarLogout');
+
+      if (role === 'Warga') {
+        if(btnTambah) btnTambah.classList.add('hidden');
+        if(btnMutasiManual) btnMutasiManual.classList.add('hidden');
+        if(bannerWarga) bannerWarga.classList.remove('hidden');
+        if(navLaporan) navLaporan.classList.add('hidden');
+        actionHeaders.forEach(el => el.classList.add('hidden'));
+        
+        if(btnSidebarLogin) btnSidebarLogin.classList.remove('hidden');
+        if(btnSidebarLogout) btnSidebarLogout.classList.add('hidden');
       } else {
-        document.getElementById('loginLayout').classList.remove('hidden');
-        document.getElementById('appLayout').classList.add('hidden');
+        if(btnTambah) btnTambah.classList.remove('hidden');
+        if(btnMutasiManual) btnMutasiManual.classList.remove('hidden');
+        if(bannerWarga) bannerWarga.classList.add('hidden');
+        if(navLaporan) navLaporan.classList.remove('hidden');
+        actionHeaders.forEach(el => el.classList.remove('hidden'));
+        
+        if(btnSidebarLogin) btnSidebarLogin.classList.add('hidden');
+        if(btnSidebarLogout) btnSidebarLogout.classList.remove('hidden');
       }
     }
 
@@ -771,6 +856,7 @@ create table mutasi_desa (
       }
     }
 
+    // Tampilkan Toast
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
       const toastMsg = document.getElementById('toastMsg');
@@ -790,7 +876,7 @@ create table mutasi_desa (
       }, 3500);
     }
 
-    // Initialize Supabase Client (Tetap menggunakan variabel permanen tanpa menyediakan tombol "Ubah Koneksi")
+    // Initialize Supabase Client
     function initSupabase() {
       const defaultUrl = "https://chdoqiqflvpkjehzwiat.supabase.co";
       const defaultKey = "sb_publishable_wQqCZJ7Nlx7qQ9XznvgO9w_5tQaiZOC";
@@ -977,6 +1063,10 @@ create table mutasi_desa (
 
     // Modal Handlers
     function openModal() {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak diizinkan menambah data.', 'error');
+        return;
+      }
       document.getElementById('modalTitle').innerText = "Tambah Data Penduduk Baru";
       document.getElementById('modalPenduduk').classList.replace('hidden', 'flex');
       setTimeout(() => {
@@ -1022,6 +1112,11 @@ create table mutasi_desa (
 
     // CRUD - Save Penduduk
     async function savePenduduk() {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Warga tidak diizinkan mengubah database.', 'error');
+        return;
+      }
+
       const btn = document.getElementById('btnSave');
       const originalText = btn.innerHTML;
       
@@ -1099,6 +1194,11 @@ create table mutasi_desa (
 
     // CRUD - Edit Penduduk (Form Hydrator)
     function editPenduduk(id) {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Warga tidak diizinkan mengedit data.', 'error');
+        return;
+      }
+
       const data = dataset.find(x => x.id == id);
       if (!data) {
         showToast('Data tidak ditemukan', 'error');
@@ -1132,6 +1232,11 @@ create table mutasi_desa (
 
     // CRUD - Delete Penduduk
     async function deletePenduduk(id) {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Warga tidak diizinkan menghapus data.', 'error');
+        return;
+      }
+
       if (!confirm('Apakah Anda yakin ingin menghapus data penduduk ini?')) return;
 
       if (isConnected && supabaseClient) {
@@ -1159,6 +1264,11 @@ create table mutasi_desa (
 
     // MUTASI ACTIONS (Inline & Manual)
     function buatMutasi(id) {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak diizinkan mengubah status mutasi.', 'error');
+        return;
+      }
+
       const data = dataset.find(x => x.id == id);
       if (!data) return;
 
@@ -1175,6 +1285,10 @@ create table mutasi_desa (
 
     // Direct Mutasi
     function openDirectMutasiModal() {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak diizinkan mencatat mutasi.', 'error');
+        return;
+      }
       document.getElementById('mutasiNama').value = '';
       document.getElementById('mutasiJenis').value = 'Pindah';
       document.getElementById('mutasiTanggal').value = new Date().toISOString().split('T')[0];
@@ -1182,12 +1296,14 @@ create table mutasi_desa (
       document.getElementById('modalMutasi').classList.replace('hidden', 'flex');
     }
 
-    // closeMutasiModal function
     function closeMutasiModal() {
       document.getElementById('modalMutasi').classList.replace('flex', 'hidden');
     }
 
     function submitManualMutasi() {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        return;
+      }
       const nama = document.getElementById('mutasiNama').value.trim();
       const jenis = document.getElementById('mutasiJenis').value;
       const tgl = document.getElementById('mutasiTanggal').value;
@@ -1227,6 +1343,10 @@ create table mutasi_desa (
     }
 
     async function deleteMutasi(id) {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak diizinkan menghapus mutasi.', 'error');
+        return;
+      }
       if (!confirm('Hapus catatan riwayat mutasi ini?')) return;
 
       if (isConnected && supabaseClient) {
@@ -1258,12 +1378,19 @@ create table mutasi_desa (
         return;
       }
 
+      const role = sessionStorage.getItem('desa_user_role');
+      const isWarga = (role === 'Warga');
+
       tbody.innerHTML = '';
       dataset.forEach((item) => {
+        // Sensor (Masking) NIK dan KK jika masuk sebagai Warga
+        const displayNik = isWarga ? `${item.nik.substring(0, 6)}******${item.nik.substring(12, 16)}` : item.nik;
+        const displayKk = isWarga ? `${item.kk.substring(0, 6)}******${item.kk.substring(12, 16)}` : item.kk;
+
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
-            <td class="p-4 font-mono font-medium text-slate-800">${item.nik}</td>
-            <td class="p-4 font-mono text-slate-500">${item.kk}</td>
+            <td class="p-4 font-mono font-medium text-slate-800">${displayNik}</td>
+            <td class="p-4 font-mono text-slate-500">${displayKk}</td>
             <td class="p-4 font-semibold text-slate-800">${item.nama}</td>
             <td class="p-4">
               <span class="px-2 py-1 rounded text-xs font-semibold ${item.jk === 'L' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}">
@@ -1281,7 +1408,7 @@ create table mutasi_desa (
                 ${item.statusKeluarga || '-'}
               </span>
             </td>
-            <td class="p-4">
+            <td class="p-4 action-column ${isWarga ? 'hidden' : ''}">
               <div class="flex items-center justify-center gap-1.5">
                 <button onclick="buatMutasi('${item.id}')" title="Mutasikan Penduduk" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors">
                   Mutasi
@@ -1307,6 +1434,9 @@ create table mutasi_desa (
         tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400">Tidak ada data Kartu Keluarga.</td></tr>`;
         return;
       }
+
+      const role = sessionStorage.getItem('desa_user_role');
+      const isWarga = (role === 'Warga');
 
       tbody.innerHTML = '';
       let kkMap = {};
@@ -1337,9 +1467,12 @@ create table mutasi_desa (
       }
 
       keys.forEach(noKK => {
+        // Sensor nomor KK jika masuk sebagai Warga
+        const displayNoKK = isWarga ? `${noKK.substring(0, 6)}******${noKK.substring(12, 16)}` : noKK;
+
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
-            <td class="p-4 font-mono font-semibold text-slate-700">${noKK}</td>
+            <td class="p-4 font-mono font-semibold text-slate-700">${displayNoKK}</td>
             <td class="p-4 font-bold text-slate-800">${kkMap[noKK].kepala}</td>
             <td class="p-4">
               <span class="px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-bold">
@@ -1361,6 +1494,9 @@ create table mutasi_desa (
         return;
       }
 
+      const role = sessionStorage.getItem('desa_user_role');
+      const isWarga = (role === 'Warga');
+
       tbody.innerHTML = '';
       mutasiData.forEach(item => {
         let labelColor = 'bg-slate-100 text-slate-700';
@@ -1379,7 +1515,7 @@ create table mutasi_desa (
             </td>
             <td class="p-4 text-xs font-mono">${item.tanggal || '-'}</td>
             <td class="p-4 text-slate-500 italic text-xs">${item.keterangan || '-'}</td>
-            <td class="p-4 text-center">
+            <td class="p-4 text-center action-column ${isWarga ? 'hidden' : ''}">
               <button onclick="deleteMutasi('${item.id}')" title="Hapus" class="text-red-600 hover:text-red-900 px-2 py-1"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
@@ -1515,6 +1651,11 @@ create table mutasi_desa (
 
     // UTILITIES - EXPORT & BACKUP
     function exportExcel() {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak dapat mengunduh data penuh.', 'error');
+        return;
+      }
+
       if(dataset.length === 0) {
         showToast('Tidak ada data kependudukan untuk diekspor', 'error');
         return;
@@ -1559,6 +1700,11 @@ create table mutasi_desa (
     }
 
     function backupJSON() {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak diizinkan membuat file cadangan.', 'error');
+        return;
+      }
+
       const backupData = {
         meta: {
           app: "Buku Induk Penduduk Desa",
@@ -1578,6 +1724,11 @@ create table mutasi_desa (
     }
 
     function restoreJSON(event) {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak diizinkan memulihkan data.', 'error');
+        return;
+      }
+
       const file = event.target.files[0];
       if (!file) return;
 
