@@ -840,7 +840,7 @@ create table mutasi_desa (
     }
 
     // Validasi Kredensial Pengguna 
-    function handleLoginSubmit() {
+    async function handleLoginSubmit() {
       const userVal = document.getElementById('loginUsername').value.trim();
       const passVal = document.getElementById('loginPassword').value;
       const errorDiv = document.getElementById('loginError');
@@ -854,20 +854,32 @@ create table mutasi_desa (
         return;
       }
 
-      let role = "";
-      let displayName = "";
+     const { data, error } =
+await supabaseClient.auth.signInWithPassword({
+  email: userVal,
+  password: passVal
+});
 
-      if (userVal === "Ameth03" && passVal === "Sayangku040490@@@") {
-        role = "Admin";
-        displayName = "Ameth03 (Admin)";
-      } else if (userVal === "Kaurtu" && passVal === "Rambatanwetan@") {
-        role = "Operator";
-        displayName = "Kaurtu";
-      } else {
-        errorMsg.innerText = "Username atau Password salah!";
-        errorDiv.classList.remove('hidden');
-        return;
-      }
+if (error) {
+  errorMsg.innerText = "Email atau Password salah!";
+  errorDiv.classList.remove('hidden');
+  return;
+}
+
+const { data: roleData } =
+await supabaseClient
+  .from('users_desa')
+  .select('*')
+  .eq('id', data.user.id)
+  .single();
+
+let role =
+roleData.role === 'admin'
+? 'Admin'
+: 'Operator';
+
+let displayName =
+roleData.nama;
 
       sessionStorage.setItem('desa_user_role', role);
       sessionStorage.setItem('desa_user_name', displayName);
