@@ -211,8 +211,8 @@
 
         <!-- DASHBOARD PAGE -->
         <section id="dashboard" class="page p-4 md:p-8 space-y-6">
-          <!-- STATS CARDS (Grid 2 Kolom di HP, 4 Kolom di PC) -->
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <!-- STATS CARDS (Grid 2 Kolom di HP, 3 Kolom di Tablet, 5 Kolom di PC) -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
             <div class="bg-white rounded-xl p-4 md:p-5 border border-slate-100 shadow-sm flex items-center gap-3 md:gap-4">
               <div class="p-2.5 md:p-3 bg-desa-50 text-desa-600 rounded-lg text-lg md:text-2xl flex-shrink-0"><i class="fa-solid fa-users"></i></div>
               <div>
@@ -244,10 +244,19 @@
                 <div id="totalKK" class="text-xl md:text-3xl font-bold text-slate-800">0</div>
               </div>
             </div>
+
+            <!-- KARTU WAJIB PILIH DPT (BARU) -->
+            <div class="bg-white rounded-xl p-4 md:p-5 border border-slate-100 shadow-sm flex items-center gap-3 md:gap-4 col-span-2 sm:col-span-1">
+              <div class="p-2.5 md:p-3 bg-emerald-50 text-emerald-600 rounded-lg text-lg md:text-2xl flex-shrink-0"><i class="fa-solid fa-square-poll-vertical"></i></div>
+              <div>
+                <div class="text-[10px] md:text-xs text-slate-500 font-medium uppercase tracking-wider">Pemilih (17+)</div>
+                <div id="totalPemilih" class="text-xl md:text-3xl font-bold text-slate-800">0</div>
+              </div>
+            </div>
           </div>
 
-          <!-- CHARTS SECTION (Grid 1 Kolom di HP, 2 Kolom di Tablet, 3 Kolom di PC) -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <!-- CHARTS SECTION (Grid 1 Kolom di HP, 2 Kolom di Tablet, 4 Kolom di PC) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-100 shadow-sm">
               <h3 class="font-bold text-sm md:text-base text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-venus-mars text-desa-500"></i> Distribusi Jenis Kelamin</h3>
               <div class="relative h-56 md:h-64 flex justify-center">
@@ -262,7 +271,15 @@
               </div>
             </div>
 
-            <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-100 shadow-sm md:col-span-2 lg:col-span-1">
+            <!-- PROPORSI PEMILIH PEMILU / DPT (BARU) -->
+            <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-100 shadow-sm">
+              <h3 class="font-bold text-sm md:text-base text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-check-to-slot text-desa-500"></i> Kelayakan DPT (17+)</h3>
+              <div class="relative h-56 md:h-64 flex justify-center">
+                <canvas id="chartDPT"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-100 shadow-sm">
               <h3 class="font-bold text-sm md:text-base text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-desa-500"></i> Distribusi Dusun</h3>
               <div class="relative h-56 md:h-64">
                 <canvas id="chartDusun"></canvas>
@@ -294,7 +311,7 @@
                     <th class="p-3 md:p-4">Nomor KK</th>
                     <th class="p-3 md:p-4">Nama Lengkap</th>
                     <th class="p-3 md:p-4">JK</th>
-                    <th class="p-3 md:p-4">TTL</th>
+                    <th class="p-3 md:p-4">TTL & Pemilu</th>
                     <th class="p-3 md:p-4">Agama</th>
                     <th class="p-3 md:p-4">Pendidikan</th>
                     <th class="p-3 md:p-4">Pekerjaan</th>
@@ -713,7 +730,22 @@ create table mutasi_desa (
     // Chart instances
     let chartJK = null;
     let chartAgama = null;
+    let chartDPT = null; // Menampung instansi diagram DPT baru
     let chartDusun = null;
+
+    // Helper: Hitung usia berdasarkan tanggal lahir kependudukan
+    function getAge(dateString) {
+      if (!dateString) return 0;
+      const today = new Date();
+      const birthDate = new Date(dateString);
+      if (isNaN(birthDate.getTime())) return 0;
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    }
 
     // Initialize application on window load
     window.onload = function() {
@@ -741,6 +773,7 @@ create table mutasi_desa (
       document.getElementById('loginLayout').classList.replace('hidden', 'flex');
     }
 
+    // closeLoginModal function
     function closeLoginModal() {
       document.getElementById('loginLayout').classList.replace('flex', 'hidden');
     }
@@ -1412,6 +1445,12 @@ create table mutasi_desa (
         const displayNik = isWarga ? `${item.nik.substring(0, 6)}******${item.nik.substring(12, 16)}` : item.nik;
         const displayKk = isWarga ? `${item.kk.substring(0, 6)}******${item.kk.substring(12, 16)}` : item.kk;
 
+        // Distribusi Pemilu / DPT Badge (Baru)
+        const age = getAge(item.tanggal);
+        const dptBadge = (age >= 17) 
+          ? '<br><span class="inline-block mt-1.5 px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[9px] font-bold whitespace-nowrap"><i class="fa-solid fa-check-to-slot"></i> Wajib Pilih</span>'
+          : '<br><span class="inline-block mt-1.5 px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded text-[9px] font-semibold whitespace-nowrap">Belum Cukup Umur</span>';
+
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="p-4 font-mono font-medium text-slate-800">${displayNik}</td>
@@ -1422,7 +1461,7 @@ create table mutasi_desa (
                 ${item.jk}
               </span>
             </td>
-            <td class="p-4 text-xs">${item.tempat || '-'},<br>${item.tanggal || '-'}</td>
+            <td class="p-4 text-xs">${item.tempat || '-'},<br>${item.tanggal || '-'} ${dptBadge}</td>
             <td class="p-4">${item.agama || '-'}</td>
             <td class="p-4 text-xs">${item.pendidikan || '-'}</td>
             <td class="p-4 text-xs">${item.pekerjaan || '-'}</td>
@@ -1568,10 +1607,19 @@ create table mutasi_desa (
       const perempuan = dataset.filter(x => x.jk === 'P').length;
       const totalKK = new Set(dataset.map(x => x.kk).filter(Boolean)).size;
 
+      // Hitung Otomatis Jumlah Wajib Pilih DPT (Usia >= 17)
+      let wajibPilihCount = 0;
+      dataset.forEach(item => {
+        if (item.tanggal && getAge(item.tanggal) >= 17) {
+          wajibPilihCount++;
+        }
+      });
+
       document.getElementById('totalPenduduk').innerText = total;
       document.getElementById('totalLaki').innerText = laki;
       document.getElementById('totalPerempuan').innerText = perempuan;
       document.getElementById('totalKK').innerText = totalKK;
+      document.getElementById('totalPemilih').innerText = wajibPilihCount;
 
       updateChartData();
     }
@@ -1580,9 +1628,10 @@ create table mutasi_desa (
     function initChart() {
       const jkCanvas = document.getElementById('chartJK');
       const agamaCanvas = document.getElementById('chartAgama');
+      const dptCanvas = document.getElementById('chartDPT'); // Canvas DPT Baru
       const dusunCanvas = document.getElementById('chartDusun');
 
-      if (!jkCanvas || !agamaCanvas || !dusunCanvas) return;
+      if (!jkCanvas || !agamaCanvas || !dptCanvas || !dusunCanvas) return;
 
       chartJK = new Chart(jkCanvas, {
         type: 'doughnut',
@@ -1624,6 +1673,26 @@ create table mutasi_desa (
         }
       });
 
+      // Instansiasi Chart Distribusi Kelayakan Hak Pilih DPT Baru (Baru)
+      chartDPT = new Chart(dptCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['Wajib Pilih (17+)', 'Belum Cukup Umur'],
+          datasets: [{
+            data: [0, 0],
+            backgroundColor: ['#10b981', '#cbd5e1'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+
       chartDusun = new Chart(dusunCanvas, {
         type: 'bar',
         data: {
@@ -1647,7 +1716,7 @@ create table mutasi_desa (
     }
 
     function updateChartData() {
-      if (!chartJK || !chartAgama || !chartDusun) return;
+      if (!chartJK || !chartAgama || !chartDusun || !chartDPT) return;
 
       const laki = dataset.filter(x => x.jk === 'L').length;
       const perempuan = dataset.filter(x => x.jk === 'P').length;
@@ -1664,6 +1733,25 @@ create table mutasi_desa (
       chartAgama.data.labels = Object.keys(agamaObj);
       chartAgama.data.datasets[0].data = Object.values(agamaObj);
       chartAgama.update();
+
+      // Hitung proporsi DPT (Baru)
+      let wajibPilih = 0;
+      let belumPilih = 0;
+      dataset.forEach(item => {
+        if (item.tanggal) {
+          const age = getAge(item.tanggal);
+          if (age >= 17) {
+            wajibPilih++;
+          } else {
+            belumPilih++;
+          }
+        } else {
+          belumPilih++;
+        }
+      });
+
+      chartDPT.data.datasets[0].data = [wajibPilih, belumPilih];
+      chartDPT.update();
 
       let dusunObj = {};
       dataset.forEach(item => {
@@ -1695,6 +1783,8 @@ create table mutasi_desa (
         "Jenis Kelamin": item.jk,
         "Tempat Lahir": item.tempat,
         "Tanggal Lahir": item.tanggal,
+        "Usia": getAge(item.tanggal),
+        "Kelayakan Pemilu (DPT)": getAge(item.tanggal) >= 17 ? "Wajib Pilih" : "Belum Cukup Umur",
         "Agama": item.agama,
         "Pendidikan Terakhir": item.pendidikan,
         "Pekerjaan": item.pekerjaan,
@@ -1766,7 +1856,7 @@ create table mutasi_desa (
               <th class="border border-slate-400 p-2">Nomor KK</th>
               <th class="border border-slate-400 p-2">Nama Lengkap</th>
               <th class="border border-slate-400 p-2 text-center">JK</th>
-              <th class="border border-slate-400 p-2">TTL</th>
+              <th class="border border-slate-400 p-2">TTL & Kelayakan DPT</th>
               <th class="border border-slate-400 p-2">Agama</th>
               <th class="border border-slate-400 p-2">Pendidikan</th>
               <th class="border border-slate-400 p-2">Pekerjaan</th>
@@ -1778,13 +1868,15 @@ create table mutasi_desa (
       `;
 
       dataset.forEach(item => {
+        const age = getAge(item.tanggal);
+        const dptLabel = age >= 17 ? "Wajib Pilih" : "Belum Cukup Umur";
         htmlContent += `
           <tr class="border-b border-slate-300">
             <td class="border border-slate-400 p-2 font-mono">${item.nik}</td>
             <td class="border border-slate-400 p-2 font-mono">${item.kk}</td>
             <td class="border border-slate-400 p-2 font-semibold text-slate-950">${item.nama}</td>
             <td class="border border-slate-400 p-2 text-center">${item.jk}</td>
-            <td class="border border-slate-400 p-2">${item.tempat || '-'}, ${item.tanggal || '-'}</td>
+            <td class="border border-slate-400 p-2">${item.tempat || '-'}, ${item.tanggal || '-'} (${dptLabel})</td>
             <td class="border border-slate-400 p-2">${item.agama || '-'}</td>
             <td class="border border-slate-400 p-2">${item.pendidikan || '-'}</td>
             <td class="border border-slate-400 p-2">${item.pekerjaan || '-'}</td>
