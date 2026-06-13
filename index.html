@@ -144,6 +144,10 @@
           <i class="fa-solid fa-users text-desa-400"></i> Data Penduduk
         </button>
 
+        <button onclick="showPage('dpt')" id="btn-dpt" class="menu-btn whitespace-nowrap text-left px-3.5 py-2 md:p-3 rounded-lg flex items-center gap-2 md:gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white text-xs md:text-sm">
+          <i class="fa-solid fa-check-to-slot text-desa-400"></i> Daftar Pemilih (DPT)
+        </button>
+
         <button onclick="showPage('mutasi')" id="btn-mutasi" class="menu-btn whitespace-nowrap text-left px-3.5 py-2 md:p-3 rounded-lg flex items-center gap-2 md:gap-3 transition-colors text-slate-300 hover:bg-desa-800 hover:text-white text-xs md:text-sm">
           <i class="fa-solid fa-right-left text-desa-400"></i> Mutasi Penduduk
         </button>
@@ -245,7 +249,7 @@
               </div>
             </div>
 
-            <!-- KARTU WAJIB PILIH DPT (BARU) -->
+            <!-- KARTU WAJIB PILIH DPT -->
             <div class="bg-white rounded-xl p-4 md:p-5 border border-slate-100 shadow-sm flex items-center gap-3 md:gap-4 col-span-2 sm:col-span-1">
               <div class="p-2.5 md:p-3 bg-emerald-50 text-emerald-600 rounded-lg text-lg md:text-2xl flex-shrink-0"><i class="fa-solid fa-square-poll-vertical"></i></div>
               <div>
@@ -271,7 +275,7 @@
               </div>
             </div>
 
-            <!-- PROPORSI PEMILIH PEMILU / DPT (BARU) -->
+            <!-- PROPORSI PEMILIH PEMILU / DPT -->
             <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-100 shadow-sm">
               <h3 class="font-bold text-sm md:text-base text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-check-to-slot text-desa-500"></i> Kelayakan DPT (17+)</h3>
               <div class="relative h-56 md:h-64 flex justify-center">
@@ -324,6 +328,45 @@
                 <tbody id="tablePenduduk" class="divide-y divide-slate-100 text-slate-600">
                   <tr>
                     <td colspan="12" class="p-8 text-center text-slate-400">Sedang memuat data...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- DAFTAR PEMILIH TETAP (DPT) PAGE -->
+        <section id="dpt" class="page hidden p-4 md:p-8 space-y-6">
+          <div class="bg-white rounded-xl border border-slate-100 shadow-sm">
+            <div class="p-4 md:p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 class="font-bold text-base md:text-lg text-slate-800">Daftar Pemilih Tetap (DPT) - Usia 17+</h3>
+                <p class="text-[11px] md:text-xs text-slate-500 mt-0.5">Daftar warga negara wajib pilih yang memiliki hak suara pada Pemilihan Umum</p>
+              </div>
+              <div class="w-full sm:w-80 relative">
+                <input type="text" id="searchDPTInput" placeholder="Cari Nama Pemilih, NIK, atau Dusun..." class="w-full border border-slate-300 rounded-lg py-2 pl-9 pr-4 focus:ring-2 focus:ring-desa-500 focus:outline-none text-xs md:text-sm">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs md:text-sm"></i>
+              </div>
+            </div>
+
+            <!-- Overflow Table Wrapper -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs md:text-sm text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold whitespace-nowrap">
+                    <th class="p-3 md:p-4">NIK</th>
+                    <th class="p-3 md:p-4">Nomor KK</th>
+                    <th class="p-3 md:p-4">Nama Lengkap</th>
+                    <th class="p-3 md:p-4 text-center">JK</th>
+                    <th class="p-3 md:p-4">TTL</th>
+                    <th class="p-3 md:p-4">Usia</th>
+                    <th class="p-3 md:p-4">RT/RW</th>
+                    <th class="p-3 md:p-4">Dusun</th>
+                  </tr>
+                </thead>
+                <tbody id="tableDPT" class="divide-y divide-slate-100 text-slate-600">
+                  <tr>
+                    <td colspan="8" class="p-8 text-center text-slate-400">Sedang memuat data pemilih...</td>
                   </tr>
                 </tbody>
               </table>
@@ -1058,6 +1101,7 @@ create table mutasi_desa (
       }
 
       renderTable();
+      renderDPT(); // Memuat ulang tabel Daftar Pemilih Tetap
       renderKK();
       renderMutasi();
       updateDashboard();
@@ -1241,6 +1285,7 @@ create table mutasi_desa (
       
       saveLocalStorage();
       renderTable();
+      renderDPT(); // Update tampilan DPT
       renderKK();
       updateDashboard();
       closeModal();
@@ -1315,6 +1360,7 @@ create table mutasi_desa (
       dataset = dataset.filter(x => x.id != id);
       saveLocalStorage();
       renderTable();
+      renderDPT(); // Update tampilan DPT
       renderKK();
       updateDashboard();
     }
@@ -1490,6 +1536,50 @@ create table mutasi_desa (
       });
     }
 
+    // Render data Daftar Pemilih Tetap (DPT) (Baru)
+    function renderDPT() {
+      const tbody = document.getElementById('tableDPT');
+      if (!tbody) return;
+
+      const dptList = dataset.filter(item => item.tanggal && getAge(item.tanggal) >= 17);
+
+      if (dptList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400">Belum ada data penduduk berhak memilih (DPT) terdaftar.</td></tr>`;
+        return;
+      }
+
+      const role = sessionStorage.getItem('desa_user_role');
+      const isWarga = (role === 'Warga');
+
+      tbody.innerHTML = '';
+      dptList.forEach((item) => {
+        const displayNik = isWarga ? `${item.nik.substring(0, 6)}******${item.nik.substring(12, 16)}` : item.nik;
+        const displayKk = isWarga ? `${item.kk.substring(0, 6)}******${item.kk.substring(12, 16)}` : item.kk;
+        const age = getAge(item.tanggal);
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-4 font-mono font-medium text-slate-800">${displayNik}</td>
+            <td class="p-4 font-mono text-slate-500">${displayKk}</td>
+            <td class="p-4 font-bold text-slate-800">${item.nama}</td>
+            <td class="p-4 text-center">
+              <span class="px-2 py-1 rounded text-xs font-semibold ${item.jk === 'L' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}">
+                ${item.jk}
+              </span>
+            </td>
+            <td class="p-4 text-xs">${item.tempat || '-'},<br>${item.tanggal || '-'}</td>
+            <td class="p-4">
+              <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-xs">
+                ${age} Tahun
+              </span>
+            </td>
+            <td class="p-4 font-mono">${item.rt || '000'}/${item.rw || '000'}</td>
+            <td class="p-4 text-slate-700">${item.dusun || '-'}</td>
+          </tr>
+        `;
+      });
+    }
+
     // Render data Kartu Keluarga
     function renderKK() {
       const tbody = document.getElementById('tableKK');
@@ -1593,6 +1683,17 @@ create table mutasi_desa (
     document.getElementById('searchInput').addEventListener('keyup', function() {
       const keyword = this.value.toLowerCase();
       const rows = document.querySelectorAll('#tablePenduduk tr');
+
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(keyword) ? '' : 'none';
+      });
+    });
+
+    // FILTER PENCARIAN DPT (Baru)
+    document.getElementById('searchDPTInput').addEventListener('keyup', function() {
+      const keyword = this.value.toLowerCase();
+      const rows = document.querySelectorAll('#tableDPT tr');
 
       rows.forEach(row => {
         const text = row.innerText.toLowerCase();
@@ -1987,6 +2088,7 @@ create table mutasi_desa (
               await syncLocalToSupabase();
             } else {
               renderTable();
+              renderDPT(); // Memuat ulang DPT hasil restore
               renderKK();
               renderMutasi();
               updateDashboard();
