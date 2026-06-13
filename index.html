@@ -15,6 +15,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- SheetJS for Excel Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- html2pdf.js for PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -368,6 +370,9 @@
               <div class="flex flex-wrap gap-2 pt-2">
                 <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
                   <i class="fa-solid fa-file-excel"></i> Ekspor ke Excel (.xlsx)
+                </button>
+                <button onclick="exportPDF()" class="bg-red-600 hover:bg-red-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
+                  <i class="fa-solid fa-file-pdf"></i> Ekspor ke PDF (.pdf)
                 </button>
                 <button onclick="backupJSON()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
                   <i class="fa-solid fa-download"></i> Ekspor Backup (.json)
@@ -1300,6 +1305,7 @@ create table mutasi_desa (
       document.getElementById('modalMutasi').classList.replace('flex', 'hidden');
     }
 
+    // submitManualMutasi function
     function submitManualMutasi() {
       if (sessionStorage.getItem('desa_user_role') === 'Warga') {
         return;
@@ -1697,6 +1703,108 @@ create table mutasi_desa (
 
       XLSX.writeFile(wb, 'Buku_Induk_Penduduk_Desa.xlsx');
       showToast('Data berhasil diekspor ke format Excel!', 'success');
+    }
+
+    // Fungsi Tambahan: Ekspor PDF Formal (Kop Surat & Tanda Tangan)
+    function exportPDF() {
+      if (sessionStorage.getItem('desa_user_role') === 'Warga') {
+        showToast('Akses ditolak: Pengunjung tidak dapat mengunduh data penuh.', 'error');
+        return;
+      }
+
+      if (dataset.length === 0) {
+        showToast('Tidak ada data kependudukan untuk diekspor', 'error');
+        return;
+      }
+
+      showToast('Sedang memproses dan menyusun berkas PDF...', 'info');
+
+      // Buat container bayangan khusus untuk PDF printout
+      const element = document.createElement('div');
+      element.className = 'p-10 bg-white text-slate-900';
+      element.style.width = '1050px'; // Lebar nyaman untuk layout lanskap
+
+      // Template dokumen berstandard formal pemerintahan desa
+      let htmlContent = `
+        <div class="text-center border-b-4 border-double border-slate-900 pb-4 mb-6">
+          <h1 class="text-2xl font-bold uppercase tracking-wide">Pemerintah Kabupaten Indramayu</h1>
+          <h2 class="text-lg font-bold uppercase tracking-wide">Kecamatan Sindang</h2>
+          <h3 class="text-3xl font-black text-emerald-800 uppercase tracking-wider">Desa Rambatan Wetan</h3>
+          <p class="text-[11px] text-slate-500 mt-1">Alamat Kantor: Jl. Raya Rambatan Wetan No. 01 Kode Pos 45215</p>
+        </div>
+        
+        <div class="text-center mb-6">
+          <h4 class="text-xl font-bold uppercase underline tracking-wider">Buku Induk Kependudukan Desa</h4>
+          <p class="text-xs text-slate-500 mt-1">Tanggal Ekspor: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+
+        <table class="w-full text-[10px] text-left border-collapse border border-slate-400">
+          <thead>
+            <tr class="bg-slate-100 text-slate-800 font-bold border-b border-slate-400">
+              <th class="border border-slate-400 p-2">NIK</th>
+              <th class="border border-slate-400 p-2">Nomor KK</th>
+              <th class="border border-slate-400 p-2">Nama Lengkap</th>
+              <th class="border border-slate-400 p-2 text-center">JK</th>
+              <th class="border border-slate-400 p-2">TTL</th>
+              <th class="border border-slate-400 p-2">Agama</th>
+              <th class="border border-slate-400 p-2">Pendidikan</th>
+              <th class="border border-slate-400 p-2">Pekerjaan</th>
+              <th class="border border-slate-400 p-2 text-center">RT/RW</th>
+              <th class="border border-slate-400 p-2">Dusun</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      dataset.forEach(item => {
+        htmlContent += `
+          <tr class="border-b border-slate-300">
+            <td class="border border-slate-400 p-2 font-mono">${item.nik}</td>
+            <td class="border border-slate-400 p-2 font-mono">${item.kk}</td>
+            <td class="border border-slate-400 p-2 font-semibold text-slate-950">${item.nama}</td>
+            <td class="border border-slate-400 p-2 text-center">${item.jk}</td>
+            <td class="border border-slate-400 p-2">${item.tempat || '-'}, ${item.tanggal || '-'}</td>
+            <td class="border border-slate-400 p-2">${item.agama || '-'}</td>
+            <td class="border border-slate-400 p-2">${item.pendidikan || '-'}</td>
+            <td class="border border-slate-400 p-2">${item.pekerjaan || '-'}</td>
+            <td class="border border-slate-400 p-2 text-center font-mono">${item.rt || '000'}/${item.rw || '000'}</td>
+            <td class="border border-slate-400 p-2">${item.dusun || '-'}</td>
+          </tr>
+        `;
+      });
+
+      htmlContent += `
+          </tbody>
+        </table>
+
+        <div class="mt-10 flex justify-end">
+          <div class="text-center w-72 text-xs">
+            <p>Rambatan Wetan, ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p class="font-bold mt-1">Kuwu Desa Rambatan Wetan</p>
+            <div class="h-20"></div>
+            <p class="font-bold underline">( ___________________________ )</p>
+            <p class="text-[10px] text-slate-500 uppercase mt-0.5">NIP / Jabatan Kuwu</p>
+          </div>
+        </div>
+      `;
+
+      element.innerHTML = htmlContent;
+
+      const opt = {
+        margin:       [0.4, 0.4, 0.4, 0.4],
+        filename:     'Buku_Induk_Penduduk_Desa.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+
+      // Jalankan proses konversi html2pdf
+      html2pdf().set(opt).from(element).save().then(() => {
+        showToast('Dokumen PDF berhasil diunduh!', 'success');
+      }).catch(err => {
+        console.error(err);
+        showToast('Terjadi kesalahan saat membuat PDF.', 'error');
+      });
     }
 
     function backupJSON() {
